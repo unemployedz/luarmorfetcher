@@ -23,6 +23,7 @@ cannot read the pasted link.
 """
 import asyncio
 import logging
+import io
 import os
 import sys
 import time
@@ -158,9 +159,18 @@ class FetchBot(commands.Bot):
             except ValueError as e:
                 await ctx.reply("That URL did not return a Luarmor v4 loader stub (%s)." % e)
                 return
-        # The embed already carries the URL. Reply works for both a command
-        # context and the follow-up Message object.
-        await ctx.reply(embed=self._embed(report))
+        # Send the fetched public loader stub as a .lua attachment only.
+        # Do not print its contents in a Discord embed or code block.
+        module_id = report.get("module_id") or "loader"
+        safe_module_id = "".join(
+            char for char in str(module_id) if char.isalnum() or char in "-_"
+        )[:64] or "loader"
+        payload = io.BytesIO(report["raw"].encode("utf-8"))
+        attachment = discord.File(
+            fp=payload,
+            filename="luarmor-%s.lua" % safe_module_id,
+        )
+        await ctx.reply(file=attachment)
 
     @staticmethod
     def _embed(report):
