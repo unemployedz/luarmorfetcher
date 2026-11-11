@@ -1,0 +1,3 @@
+# The Luarmor-Fetch CLI itself is standard-library only.
+# These packages are for the Discord bot (bot.py) and the Render deployment.
+discord.py>=2.3,<3.0

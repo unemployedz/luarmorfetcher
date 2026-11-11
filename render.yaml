@@ -1,0 +1,26 @@
+# Render blueprint -- one-click deploy of the Discord bot.
+#
+#   1. Push this repo to GitHub.
+#   2. In Render: New -> Blueprint -> pick this repo -> apply.
+#   3. Render asks for the DISCORD_TOKEN secret (mark it "Secret").
+#   4. The bot worker starts on `python bot.py`.
+#
+# The bot needs the privileged Message Content intent enabled in the Discord
+# developer portal (Bot -> Privileged Gateway Intents).
+services:
+  - type: worker
+    name: luarmorfetcher-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.1"
+      - key: LRM_PREFIX
+        value: "."
+      - key: LRM_PENDING_TTL
+        value: "180"
