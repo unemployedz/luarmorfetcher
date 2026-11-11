@@ -56,7 +56,12 @@ class FetchBot(commands.Bot):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.add_command(self.fetch)
+        fetch_command = FetchBot.fetch
+        self.add_command(commands.Command(
+            fetch_command.callback.__get__(self, type(self)),
+            name="fetch",
+            help="Fetch a Luarmor v4 loader stub and show its content.",
+        ))
         # (channel_id, author_id) -> deadline; a bare `.fetch` arms one slot
         self.pending = {}
 
