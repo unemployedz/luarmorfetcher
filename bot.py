@@ -83,7 +83,10 @@ class FetchBot(commands.Bot):
                       help="Fetch a Luarmor v4 loader stub and show its content.")
     async def fetch(self, ctx, *, url=None):
         if not url:
-            self.pending[(ctx.channel.id, ctx.author.id)] = time.time() + PENDING_TTL
+            key = (ctx.channel.id, ctx.author.id)
+            self.pending[key] = time.time() + PENDING_TTL
+            LOG.info("armed follow-up for channel=%s author=%s ttl=%ss",
+                     ctx.channel.id, ctx.author.id, PENDING_TTL)
             await ctx.reply("Paste the loader link here -- e.g.\n"
                             "`https://api.luarmor.net/files/v4/loaders/<md5>.lua`")
             return
@@ -111,23 +114,40 @@ class FetchBot(commands.Bot):
         deadline = self.pending.get(key)
         if deadline is None:
             return
+
+        LOG.info("received pending follow-up: channel=%s author=%s chars=%s",
+                 message.channel.id, message.author.id, len(message.content))
+
         if time.time() > deadline:
             self.pending.pop(key, None)
+            LOG.info("follow-up expired: channel=%s author=%s",
+                     message.channel.id, message.author.id)
             return
+
         found = fetchcmd.extract_loader_url(message.content)
         if not found:
             # not a link -- keep the slot armed so a real paste still lands
             self.pending[key] = time.time() + PENDING_TTL
+            LOG.info("follow-up did not contain a recognized loader URL")
             await message.reply("That does not look like a loader link -- paste the "
                                 "`https://api.luarmor.net/files/v4/loaders/<md5>.lua` URL.")
             return
+
         self.pending.pop(key, None)
-        await self._report(message, found)
+        LOG.info("recognized loader URL in follow-up; starting fetch")
+        try:
+            await self._report(message, found)
+        except Exception:
+            LOG.exception("unexpected error while handling pasted loader URL")
+            await message.reply("The bot hit an internal error while handling that link. "
+                                "Check the Render logs for the traceback.")
 
     # -- shared reporting ----------------------------------------------------
     async def _report(self, ctx, url):
         """Fetch the stub and reply with its main content."""
-        async with ctx.typing():
+        # Both commands.Context and discord.Message expose .channel, but the
+        # typing indicator belongs to the channel (not Message itself).
+        async with ctx.channel.typing():
             try:
                 _status, body = await asyncio.to_thread(common.http_get, url)
             except Exception as e:                      # network / HTTP failure
@@ -138,7 +158,9 @@ class FetchBot(commands.Bot):
             except ValueError as e:
                 await ctx.reply("That URL did not return a Luarmor v4 loader stub (%s)." % e)
                 return
-        await ctx.send(embed=self._embed(report), url=url)
+        # The embed already carries the URL. Reply works for both a command
+        # context and the follow-up Message object.
+        await ctx.reply(embed=self._embed(report))
 
     @staticmethod
     def _embed(report):
