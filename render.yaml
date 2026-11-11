@@ -1,19 +1,15 @@
-# Render blueprint -- one-click deploy of the Discord bot.
+# Render Blueprint -- Discord bot hosted as a free web service.
 #
-#   1. Push this repo to GitHub.
-#   2. In Render: New -> Blueprint -> pick this repo -> apply.
-#   3. Render asks for the DISCORD_TOKEN secret (mark it "Secret").
-#   4. The bot worker starts on `python bot.py`.
-#
-# The bot needs the privileged Message Content intent enabled in the Discord
-# developer portal (Bot -> Privileged Gateway Intents).
+# The HTTP endpoint keeps the web service healthy; the Discord bot runs in the
+# same process. Free web services may spin down after inactivity.
 services:
-  - type: worker
+  - type: web
     name: luarmorfetcher-bot
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python bot.py
+    startCommand: python web.py
+    healthCheckPath: /healthz
     autoDeploy: true
     envVars:
       - key: DISCORD_TOKEN
