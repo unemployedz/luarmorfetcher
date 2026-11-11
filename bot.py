@@ -103,6 +103,10 @@ class FetchBot(commands.Bot):
         await self.process_commands(message)
         if message.author.bot:
             return
+        # A command that arms a pending link must not be re-processed as
+        # the link itself during this same on_message event.
+        if message.content.strip().startswith(PREFIX):
+            return
         key = (message.channel.id, message.author.id)
         deadline = self.pending.get(key)
         if deadline is None:
