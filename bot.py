@@ -56,6 +56,7 @@ class FetchBot(commands.Bot):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.add_command(self.fetch)
         # (channel_id, author_id) -> deadline; a bare `.fetch` arms one slot
         self.pending = {}
 
